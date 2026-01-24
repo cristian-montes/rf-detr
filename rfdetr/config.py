@@ -37,6 +37,7 @@ class ModelConfig(BaseModel):
     cls_loss_coef: float = 1.0
     segmentation_head: bool = False
     mask_downsample_ratio: int = 4
+    num_attributes: int = 0
 
 
 class RFDETRBaseConfig(ModelConfig):
@@ -159,6 +160,8 @@ class TrainConfig(BaseModel):
     class_names: List[str] = None
     run_test: bool = True
     segmentation_head: bool = False
+    num_attributes: int = 0
+    attr_loss_coef: float = 1.0
 
 
 class SegmentationTrainConfig(TrainConfig):

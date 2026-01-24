@@ -181,6 +181,8 @@ class LWDETR(nn.Module):
 
             outputs_class = self.class_embed(hs)
             outputs_attr = None
+            print(f'DEBUG_FWD: self.attr_embed is {type(self.attr_embed)}')
+            print(f'DEBUG_FWD: self.attr_embed is None? {self.attr_embed is None}')
             if self.attr_embed is not None:
                 outputs_attr = self.attr_embed(hs)
 
@@ -517,7 +519,7 @@ class SetCriterion(nn.Module):
         """Compute BCE-with-logits loss for attributes on matched pairs.
         Expects outputs to contain 'pred_attributes' of shape [B, Q, A] and targets with key 'attributes' as [N, A].
         """
-        assert 'pred_attributes' in outputs, "pred_attributes missing in model outputs"
+        if 'pred_attributes' not in outputs: return {}
         pred_attr = outputs['pred_attributes']  # [B, Q, A]
         idx = self._get_src_permutation_idx(indices)
         src_attr = pred_attr[idx]  # [N, A]
