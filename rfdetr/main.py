@@ -115,11 +115,25 @@ class Model:
                 self.class_names = checkpoint['args'].class_names
 
             checkpoint_num_classes = checkpoint['model']['class_embed.bias'].shape[0]
-            if checkpoint_num_classes != args.num_classes + 1:
-                logger.warning(
-                    f"Reinitializing detection head with {checkpoint_num_classes} classes"
-                )
-                self.reinitialize_detection_head(checkpoint_num_classes)
+        if checkpoint_num_classes != args.num_classes + 1:
+            logger.warning(
+                f"Class count mismatch: Checkpoint {checkpoint_num_classes} vs Model {args.num_classes + 1}. Filtering incompatible weights..."
+            )
+            
+            # Filter keys directly in the checkpoint dict
+            keys_to_remove = []
+            for k in list(checkpoint['model'].keys()):
+                # Filter both main class_embed and transformer encoder output class embeds
+                # We check if the shape matches the checkpoint's old class count (e.g. 91)
+                if 'class_embed' in k:
+                    if checkpoint['model'][k].shape[0] == checkpoint_num_classes:
+                         keys_to_remove.append(k)
+            
+            for k in keys_to_remove:
+                del checkpoint['model'][k]
+            
+            logger.info(f"Removed {len(keys_to_remove)} mismatched layers from checkpoint.")
+            # self.reinitialize_detection_head(checkpoint_num_classes)
             # add support to exclude_keys
             # e.g., when load object365 pretrain, do not load `class_embed.[weight, bias]`
             if args.pretrain_exclude_keys is not None:

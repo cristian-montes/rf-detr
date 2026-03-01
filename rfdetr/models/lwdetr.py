@@ -234,6 +234,51 @@ class LWDETR(nn.Module):
 
         return out
 
+
+    def load_pretrain_weights(self, path, device='cuda'):
+        """Loads weights and handles class mismatch gracefully"""
+        print(f"Loading pretrain weights from {path}")
+        state_dict = torch.load(path, map_location=device)
+        
+        # If state_dict is a checkpoint, it might have a 'model' key
+        if 'model' in state_dict:
+            state_dict = state_dict['model']
+            
+        model_dict = self.state_dict()
+        
+        # 1. Filter out unnecessary keys
+        # 2. Handle class_embed mismatch: Only load if shapes match
+        pretrained_dict = {}
+        for k, v in state_dict.items():
+            if k in model_dict:
+                if k == 'class_embed.weight' or k == 'class_embed.bias':
+                    if v.shape == model_dict[k].shape:
+                        pretrained_dict[k] = v
+                    else:
+                        print(f"Skipping {k} due to shape mismatch: {v.shape} vs {model_dict[k].shape}")
+                        continue
+                else:
+                    pretrained_dict[k] = v
+            else:
+                # Handle keys with 'module.' prefix if model was saved with DataParallel
+                k_fix = k.replace('module.', '')
+                if k_fix in model_dict:
+                     if k_fix == 'class_embed.weight' or k_fix == 'class_embed.bias':
+                        if v.shape == model_dict[k_fix].shape:
+                            pretrained_dict[k_fix] = v
+                        else:
+                            print(f"Skipping {k_fix} due to shape mismatch")
+                            continue
+                     else:
+                        pretrained_dict[k_fix] = v
+        
+        # 3. Overwrite entries in the existing state dict
+        model_dict.update(pretrained_dict) 
+        
+        # 4. Load the new state dict
+        self.load_state_dict(model_dict)
+        print("Pretrain weights loaded successfully (with shape filtering).")
+
     def forward_export(self, tensors):
         srcs, _, poss = self.backbone(tensors)
         # only use one group in inference
